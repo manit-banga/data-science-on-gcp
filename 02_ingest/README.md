@@ -1,22 +1,33 @@
 # 2. Ingesting data onto the Cloud
 
-### Populate your bucket with the data you will need for the book
-The simplest way to get the files you need is to copy it from my bucket:
-* Go to the 02_ingest folder of the repo
-* Run the program ./ingest_from_crsbucket.sh and specify your bucket name.
+### Create a bucket
+* Go to the Storage section of the GCP web console and create a new bucket
 
-Alternately, you can ingest from the original source of the data and carry out the cleanup steps as described in the text:
+### Populate your bucket with the data you will need for the book
+
+* Open CloudShell and git clone this repo:
+    ```
+    git clone https://github.com/GoogleCloudPlatform/data-science-on-gcp
+    ```
 * Go to the 02_ingest folder of the repo
-* Change the BUCKET variable in upload.sh
-* Execute ./ingest.sh
-* Execute monthlyupdate/ingest_flights.py specifying your bucket name, and with year of 2016 and month of 01.  Type monthlyupdate/ingest_flights.py --help to get usage help.
-This will initialize your bucket with the input files corresponding to 2015 and January 2016. These files are needed to carry out the steps that come later in this book.
+* Edit ./ingest.sh to reflect the years you want to process (at minimum, you need 2015)
+* Execute ./ingest.sh bucketname
 
 ### [Optional] Scheduling monthly downloads
 * Go to the 02_ingest/monthlyupdate folder in the repo.
-* Initialize a default AppEngine application in your project by running ./init_appengine.sh.
-* Open the file app.yaml and change the CLOUD_STORAGE_BUCKET to reflect the name of your bucket.
-* Run ./deploy.sh to deploy the Cron service app.  This will take 5-10 minutes.
-* Visit the GCP web console and navigate to the AppEngine section. You should see two services: one the default (which is just a Hello World application) and the other is the flights service.
-* Click on the flights service, follow the link to ingest the data and you’ll find that your access is forbidden -- the ingest capability is available only to the Cron service (or from the GCP web console by clicking the “Run now” button in the task queues section of AppEngine). If you click on “Run now”, a few minutes later, you’ll see the next month’s data show up in the storage bucket.
-* Stop the flights application -- we won’t need it any further.
+* Run the command `pip3 install google-cloud-storage google-cloud-bigquery`
+* Run the command `gcloud auth application-default login`
+* Try ingesting one month using the Python script: `./ingest_flights.py --debug --bucket your-bucket-name --year 2015 --month 02` 
+* Set up a service account called svc-monthly-ingest by running `./01_setup_svc_acct.sh`
+* Now, try running the ingest script as the service account:
+  * Visit the Service Accounts section of the GCP Console: https://console.cloud.google.com/iam-admin/serviceaccounts
+  * Select the newly created service account svc-monthly-ingest and click Manage Keys
+  * Add key (Create a new JSON key) and download it to a file named tempkey.json
+  * Run `gcloud auth activate-service-account --key-file tempkey.json`
+  * Try ingesting one month `./ingest_flights.py --bucket $BUCKET --year 2015 --month 03 --debug`
+  * Go back to running command as yourself using `gcloud auth login`
+* Deploy to Cloud Run: `./02_deploy_cr.sh`
+* Test that you can invoke the function using Cloud Run: `./03_call_cr.sh`
+* Test that the functionality to get the next month works: `./04_next_month.sh`
+* Set up a Cloud Scheduler job to invoke Cloud Run every month: `./05_setup_cron.sh`
+* Visit the GCP Console for Cloud Run and Cloud Scheduler and delete the Cloud Run instance and the scheduled task—you won’t need them any further.
